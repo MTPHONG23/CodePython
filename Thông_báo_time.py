@@ -1,23 +1,17 @@
-from datetime import datetime
 from pprint import pprint
-from RAD_LIB.Telnet import TELNET
-from RAD_LIB.Snmp import SNMP
-from RAD_LIB.MongoDB import MongoDB
 import re, time, subprocess
-from xml.etree import ElementTree
-import requests, yaml, traceback, random, os
-from queue import PriorityQueue, Queue
 from threading import Thread, Lock
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from easysnmp import Session
 
 list_ip = [
     "11.57.143.22",
     "11.57.143.23",
     "11.54.149.11",
     "11.61.144.71",
-    "11.61.144.72",
+    "11.61.144.72"
 ]
 
 OIDS = {
@@ -26,11 +20,6 @@ OIDS = {
 }
 
 THRESHOLD = 120
-
-def send_command_server(command:str):
-    respone =  subprocess.Popen(command,  shell=True, stdout=subprocess.PIPE).stdout
-    outputping =  respone.read().decode()
-    return outputping
 
 def send_mail(subject, body, to_email):
     try:
@@ -54,7 +43,7 @@ def send_mail(subject, body, to_email):
 
 def get_battery_time(ip):
     for oid, scale in OIDS.values():
-        cmd = ["snmpget", "-v2c", "-c", "FPTHCM", ip, oid]
+        cmd = ["snmpwalk", "-v2c", "-c", "FPTHCM", ip, oid]
         result = subprocess.run(cmd, capture_output=True, text=True)
 
         res = re.findall(r"INTEGER:\s+(\d+)", result)
@@ -64,10 +53,22 @@ def get_battery_time(ip):
             return minutes
     return 0
 
+def get_battery_time1(ip):
+    session = Session(hostname=ip, community="FPTHCM", version=2)
+
+    for oid, scale in OIDS.values():
+        result = session.get(oid)
+            
+        if result.value.isdigit():
+            val = int(result.value)
+            minutes = val * scale
+            return minutes
+
+    return 0
+
 for ip in list_ip:
     battery_time = get_battery_time(ip)
-    if battery_time is not None:
-        if battery_time < THRESHOLD:
+    if battery_time and battery_time < THRESHOLD:
             subject = f"Battery warning at {ip}"
             body = f"Thiết bị {ip} chỉ còn {battery_time} phút battery. Cần kiểm tra gấp!"
             send_mail(subject, body, "n21dcvt072@student.ptithcm.edu.vn")
