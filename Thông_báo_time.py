@@ -1,10 +1,7 @@
-from pprint import pprint
-import re, time, subprocess
-from threading import Thread, Lock
+from easysnmp import Session
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from easysnmp import Session
 
 list_ip = [
     "11.57.143.22",
@@ -19,12 +16,13 @@ OIDS = {
     "Delta":  ("iso.3.6.1.4.1.20246.2.3.1.1.1.2.9.1.1.3.24", 10)  
 }
 
-THRESHOLD = 120
+THRESHOLD = 5000  # 
+
 
 def send_mail(subject, body, to_email):
     try:
         from_email = "thephongca@gmail.com"
-        password = "erajeljnkbpphvsp" 
+        password = "smynyresthaenvcn" 
 
         msg = MIMEMultipart()
         msg["From"] = from_email
@@ -37,40 +35,31 @@ def send_mail(subject, body, to_email):
         server.login(from_email, password)
         server.sendmail(from_email, to_email, msg.as_string())
         server.quit()
-        print("Gửi mail thành công!")
+        print(f"[MAIL] Đã gửi cảnh báo tới {to_email}")
     except Exception as e:
         print("Lỗi gửi mail:", e)
 
+
 def get_battery_time(ip):
-    for oid, scale in OIDS.values():
-        cmd = ["snmpwalk", "-v2c", "-c", "FPTHCM", ip, oid]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-
-        res = re.findall(r"INTEGER:\s+(\d+)", result)
-        if res:  
-            val = int(res[0])
-            minutes =val * scale   
-            return minutes
-    return 0
-
-def get_battery_time1(ip):
     session = Session(hostname=ip, community="FPTHCM", version=2)
 
     for oid, scale in OIDS.values():
-        result = session.get(oid)
-            
-        if result.value.isdigit():
-            val = int(result.value)
-            minutes = val * scale
-            return minutes
-
+            result = session.get(oid)
+            if result.value.isdigit():
+                val = int(result.value)
+                minutes = val * scale
+                return minutes
     return 0
 
-for ip in list_ip:
-    battery_time = get_battery_time(ip)
-    if battery_time and battery_time < THRESHOLD:
-            subject = f"Battery warning at {ip}"
-            body = f"Thiết bị {ip} chỉ còn {battery_time} phút battery. Cần kiểm tra gấp!"
-            send_mail(subject, body, "n21dcvt072@student.ptithcm.edu.vn")
-    else:
-        print(f"Thiết bị {ip} không lấy được dữ liệu")
+
+if __name__ == "__main__":
+    for ip in list_ip:
+        bt1 = get_battery_time(ip)
+        if bt1 > 0:
+            print(f"Thiết bị {ip} battery time: {bt1} phút")
+            if bt1 < THRESHOLD:
+                subject = f"[ALERT] Battery low at {ip}"
+                body = f"Thiết bị {ip} chỉ còn {bt1} phút battery. Cần kiểm tra gấp!"
+                send_mail(subject, body, "n21dcvt072@student.ptithcm.edu.vn")
+        else:
+            print(f"Thiết bị {ip} không lấy được dữ liệu")
