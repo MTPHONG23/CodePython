@@ -16,7 +16,7 @@ OIDS = {
     "Delta":  ("iso.3.6.1.4.1.20246.2.3.1.1.1.2.9.1.1.3.24", 10)  
 }
 
-THRESHOLD = 5000  # 
+THRESHOLD = 120
 
 
 def send_mail(subject, body, to_email):
