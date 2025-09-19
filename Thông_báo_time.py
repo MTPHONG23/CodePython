@@ -3,14 +3,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
-
-DEVICES = {
-    "11.57.143.22": "HCMP01001PWDE1U",
-    "11.57.143.23": "HCMP01002PWDE1U",
-    "11.54.149.11": "HCMP47602PWDE1U",
-    "11.61.144.71": "BDGP11501PWDE1U",
-    "11.61.144.72": "BDGP11502PWDE1U"
-}
+import pandas as pd
 
 OIDS = {
     "Enatel": ("iso.3.6.1.4.1.21940.2.4.2.24.0", 1),
@@ -40,7 +33,19 @@ def html_mail(source_name, ip, battery_time):
           <tr><td>🟨 Thời gian pin còn:</td><td>{battery_time} phút</td></tr>
           <tr><td>🟨 Thời gian cảnh báo:</td><td>{now}</td></tr>
         </table>
+        
+        <p><b>🔵 Hướng xử lý:</b></p>
+        <table cellpadding="5" style="font-size:14px;">
+          <tr><td style="color:green;">🟩 Chi nhánh ứng cứu GẤP chạy máy phát điện</td></tr>
+          <tr><td style="color:green;">🟩 Chi nhánh off 2/3 quạt của POP</td></tr>
+        </table>
 
+        <br>
+        <div style="text-align:left;">
+          <img src="https://capfpt.com.vn/wp-content/uploads/2022/04/logo-fpt-telecom-25-nam-1024x405.png" 
+               width="300">
+        </div>
+    
       </body>
     </html>
     """
@@ -79,7 +84,10 @@ if __name__ == "__main__":
         server = smtplib.SMTP("smtp.gmail.com", 587)
         server.starttls()
         server.login(from_email, password)
-
+        
+        df = pd.read_excel("devices.xlsx", header=None)
+        df = df[1:]
+        DEVICES = dict(zip(df[2], df[1]))
         for ip, source_name in DEVICES.items():
             bt1 = get_battery_time(ip)
             if bt1 > 0 and bt1 < THRESHOLD:
