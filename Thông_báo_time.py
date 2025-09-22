@@ -89,8 +89,8 @@ if __name__ == "__main__":
             devices = json.load(f)
 
         for dev in devices:
-            ip = dev["IP nguồn"]
-            source_name = dev["Tên nguồn"]
+            ip = dev["IpNguon"]
+            source_name = dev["TenNguon"]
 
             bt1 = get_battery_time(ip)
             if bt1 > 0 and bt1 < THRESHOLD:
