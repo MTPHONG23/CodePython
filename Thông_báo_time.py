@@ -3,7 +3,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
-import pandas as pd
+import json
 
 OIDS = {
     "Enatel": ("iso.3.6.1.4.1.21940.2.4.2.24.0", 1),
@@ -85,10 +85,13 @@ if __name__ == "__main__":
         server.starttls()
         server.login(from_email, password)
         
-        df = pd.read_excel("devices.xlsx", header=None)
-        df = df[1:]
-        DEVICES = dict(zip(df[2], df[1]))
-        for ip, source_name in DEVICES.items():
+        with open("devices.json", "r", encoding="utf-8") as f:
+            devices = json.load(f)
+
+        for dev in devices:
+            ip = dev["IP nguồn"]
+            source_name = dev["Tên nguồn"]
+
             bt1 = get_battery_time(ip)
             if bt1 > 0 and bt1 < THRESHOLD:
                 print(f"Thiết bị {ip} battery time: {bt1} phút")
