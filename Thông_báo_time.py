@@ -4,13 +4,21 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 import json
+import time 
 
 OIDS = {
     "Enatel": ("iso.3.6.1.4.1.21940.2.4.2.24.0", 1),
     "Delta":  ("iso.3.6.1.4.1.20246.2.3.1.1.1.2.9.1.1.3.24", 10)
 }
 
+POWER = {
+    "Enatel": ".1.3.6.1.4.1.21940.2.11.1.0",
+    "Delta":  ".1.3.6.1.4.1.20246.2.3.1.1.1.2.10.1.1.3.37"
+}
+
 THRESHOLD = 120
+RETRIES = 2  
+RETRY_DELAY = 1 
 
 def name_power(name: str):
     pop = name[:3]
@@ -75,6 +83,14 @@ def get_battery_time(ip):
             return minutes
     return 0
 
+def check_ac(ip):
+    session = Session(hostname=ip, community="FPTHCM", version=2)
+    for oid in POWER.values():
+        result = session.get(oid)
+        if result and result.value.isdigit():
+            v = int(result.value)
+            return v == 1
+    return False
 
 if __name__ == "__main__":
     from_email = "thephongca@gmail.com"
@@ -91,14 +107,29 @@ if __name__ == "__main__":
         for dev in devices:
             ip = dev["IpNguon"]
             source_name = dev["TenNguon"]
+            bt1 = 0
+            if(check_ac(ip) == False):
+                for a in range(1, RETRIES + 1):
+                    bt1 = get_battery_time(ip)
+                    if bt1 > 0:
+                        print(f"Lấy SNMP thành công cho {ip} (lần {a}): {bt1} phút")
+                        break
+                    else:
+                        print(f"Thiết bị {ip} không trả SNMP (lần {a})")
+                        if a < RETRIES:
+                            print(f"Thử lại sau {RETRY_DELAY}s...")
+                            time.sleep(RETRY_DELAY)
 
-            bt1 = get_battery_time(ip)
-            if bt1 > 0 and bt1 < THRESHOLD:
-                print(f"Thiết bị {ip} battery time: {bt1} phút")
-                full_name = name_power(source_name)
-                subject = f"⛔️⛔️⛔ {full_name} - {ip} cảnh báo thời gian backup pin còn {bt1} phút"
-                body = html_mail(full_name, ip, bt1)
-                send_mail_html(server, from_email, to_email, subject, body)
+                if bt1 == 0:
+                    print(f"[BYPASS] Không lấy được SNMP cho {ip} sau {RETRIES} lần")
+                    continue
+
+                if bt1 > 0 and bt1 < THRESHOLD:
+                    print(f"Thiết bị {ip} battery time: {bt1} phút")
+                    full_name = name_power(source_name)
+                    subject = f"⛔️⛔️⛔ {full_name} - {ip} cảnh báo thời gian backup pin còn {bt1} phút"
+                    body = html_mail(full_name, ip, bt1)
+                    send_mail_html(server, from_email, to_email, subject, body)
 
         server.quit()
 
