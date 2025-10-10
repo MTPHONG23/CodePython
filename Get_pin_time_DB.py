@@ -78,7 +78,7 @@ def get_pop_isACOff():
     db_device_management = MongoDB("webtool", "ktht", "123456")
     tb_device_table = db_device_management.connect("PowerOffMonitor")
 
-    isACOff_pop_list = tb_device_table.distinct( "popName",  { "isACOff": True })
+    isACOff_pop_list = list(tb_device_table.distinct( "popName",  { "isACOff": True }))
         
     db_device_management.disconnect()
 
